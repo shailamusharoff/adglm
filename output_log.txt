@@ -1,0 +1,25 @@
+ancestry_parameters.txt 
+
+Arguments: 
+    pheno_name:  asthma 
+    is_binary:  TRUE 
+    pheno_file:  ~/data/galaii_data/galaii_phenotypes/gala2_clean2016_02_21_de_indent.csv 
+    fit_file:  ~/projects/adglm/results/git_repo/output_fit.txt 
+    lrt_file:  ~/projects/adglm/results/git_repo/output_lrt.txt 
+    log_file:  ~/projects/adglm/results/git_repo/output_log.txt 
+    pc_file:  ~/data/galaii_data/galaii_phenotypes/pca/pr_maf05_nomiss_pca.eigenvec 
+    idv_file:  ~/projects/adglm/doc/metafiles/idv_files/null_tests/gala_pr.idvs 
+    pheno_transform:  orig 
+    theta_transform:  orig 
+    dof:  1 
+    sd_thresh:  2.85 
+
+Binary phenotype: has 2 values
+Warning: 147 individual(s) do(es) not have PCs in pc_file.
+Covariate dataframe has 2320 individuals.
+Removed 534 individuals with incomplete phenotype and/or covariate measurements.
+Final dataframe with no NAs has 1786 individuals.
+Success: hetglm converged
+
+Warnings:
+  
