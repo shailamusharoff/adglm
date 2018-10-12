@@ -1,2 +1,1 @@
 pheno_name model_name pheno_trans theta_trans ll_null ll_alt lrt_stat df lrt_pvalue 
-asthma m_afr orig orig -1202.27573684239 -1195.50735217801 13.5367693287676 1 0.000233934737793193
