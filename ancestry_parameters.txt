@@ -3,9 +3,7 @@ pheno_name: asthma
 is_binary: TRUE
 
 # input files
-pheno_file: ~/data/galaii_data/galaii_phenotypes/gala2_clean2016_02_21_de_indent.csv
-pc_file: ~/data/galaii_data/galaii_phenotypes/pca/pr_maf05_nomiss_pca.eigenvec
-idv_file: ~/projects/adglm/doc/metafiles/idv_files/null_tests/gala_pr.idvs
+pheno_file: phenos.txt
 
 # model
 dof: 1
@@ -16,9 +14,9 @@ var_covar: [eur]
 var_test: [afr]
 
 # output files
-fit_file: ~/projects/adglm/results/git_repo/output_fit.txt
-lrt_file: ~/projects/adglm/results/git_repo/output_lrt.txt
-log_file: ~/projects/adglm/results/git_repo/output_log.txt
+fit_file: output_fit.txt
+lrt_file: output_lrt.txt
+log_file: output_log.txt
 
 # options
 pheno_transform: orig

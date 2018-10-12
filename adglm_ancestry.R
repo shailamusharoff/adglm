@@ -1,7 +1,6 @@
-## Runs null tests for a batch of populations and phenotypes
-#  Output: for each population, ancestry variance estimates, along with ordinary linear or logistic regression estimates in "null mean" rows of dataframe
-# Note: the dglm package only runs on a matrix with no NAs. the hetglm package can run with NAs.
-
+## Runs ancestry variance association tests
+# Output: for each population, ancestry variance estimates
+# Removes NAs before running dglm package, which cannot handle NAs
 
 # load libraries
 library(glmx)
@@ -10,13 +9,12 @@ library(dglm)
 library(plyr)
 library(dplyr)
 library(yaml)
-
 source('adglm_ancestry_functions.R')
 
 ## Argument parsing -----------------------------------------
 
 NARGS=1                 # number of required arguments to program
-NPARAMS = 14            # number of required parameters in file
+NPARAMS = 12            # number of required parameters in file
 
 terse = T               # if T, writes one line per phenotype
 args = commandArgs(trailingOnly=TRUE)
@@ -25,6 +23,7 @@ if((length(args) < NARGS)) {
   stop(sprintf("At least %d argument must be supplied.n", NARGS), call.=F)
 }
 param_file = args[1]
+
 params = yaml.load_file(param_file)
 if((length(params) < NPARAMS)) {
   print(paste('Parameter file has', length(param), 'entries'))
@@ -35,11 +34,7 @@ pheno_name = params$pheno_name         # name of phenotype to test
 is_binary = params$is_binary           # boolean specifying test to run. T or F. if T, run logistic regresion on binary phenotype
 pheno_transform = params$pheno_transform  # string: orig | quantnorm | truncate
 theta_transform = params$theta_transform      # string: orig | quantnorm | truncate
-
-pheno_file = params$pheno_file         # data dictionary csv of covariates including pheno, age, ancestry, etc
-pc_file = params$pc_file               # file with genetic PCs
-idv_file = params$idv_file             # individuals to analyze. one line per individual with two columns, no header
-
+pheno_file = params$pheno_file         # file of covariates including pheno, age, ancestry, etc
 dof = as.numeric(params$dof)
 model_name = params$model_name         # string. printed out in table
 mean_covar = params$mean_covar
@@ -52,10 +47,6 @@ lrt_file = params$lrt_file             # output
 log_file = params$log_file             # log file with errors and warnings
 sd_thresh = as.numeric(params$sd_thresh)  # integer. points more than this many standard deviations from the mean are outliers
 
-# process arguments
-if(idv_file == 'NA') {
-  idv_file=NA    
-}
 valid_transformations = c('orig', 'quantnorm', 'truncate')
 if(! pheno_transform %in% valid_transformations) {
   stop(sprintf('pheno_transform: got value %s. Must be one of: %s', pheno_transform, toString(valid_transformations)))
@@ -75,8 +66,6 @@ cat(param_file,
     '\n    fit_file: ', fit_file, 
     '\n    lrt_file: ', lrt_file, 
     '\n    log_file: ', log_file, 
-    '\n    pc_file: ', pc_file, 
-    '\n    idv_file: ', idv_file,
     '\n    pheno_transform: ', pheno_transform,
     '\n    theta_transform: ', theta_transform, 
     '\n    dof: ', dof, 
@@ -94,11 +83,9 @@ cat(paste(fit_colnames, sep=' '), '\n', file=fit_file, append=F, sep=' ')
 cat(paste(lrt_colnames, sep=' '), '\n', file=lrt_file, append=F, sep=' ')
 
 # 1. read in a file of all phenotypes and covariates
-covar = make_covar_df(pheno_name, pheno_file, pc_file, idv_file, is_binary, pheno_transform, theta_transform, sd_thresh, log_file)
-
-# 2. exclude individuals with NAs because dglm cannot handle any NAs
 model_terms = unique(c(mean_covar, mean_test, var_covar, var_test))
-covar = subset_covar_df(covar, model_terms)
+covar = make_covar_df(pheno_name, pheno_file, is_binary, pheno_transform, theta_transform, sd_thresh, model_terms, log_file)
+
 retval = make_models(mean_covar, var_covar, mean_test, var_test, dof, log_file)
 mean_null_model = retval$mean_null_model
 mean_alt_model = retval$mean_alt_model
@@ -127,3 +114,4 @@ write.table(retval$fit_df, fit_file, row.names=F, col.names=F, quote=F, append=T
 # print all warnings
 warning_msg = toString(warnings())
 cat('\n\nWarnings:\n', warning_msg, '\n', file=log_file, append=T)
+

@@ -45,53 +45,6 @@ remove_outliers <- function(x, m, debug=F) {
   return(x)
 }
 
-read_idvs <- function(idv_file) {
-  # idv_file: first two columns of a plink fam file
-  # idvs: dataframe or NA
-  # TODO can add to utils file
-  
-  if(is.na(idv_file)) {
-    idvs = NULL   # using this instead of NA, which could be wrong if first element of a valid idvs dataframe is NA
-  } else {
-    idvs = read.table(idv_file, header=F, stringsAsFactors=F)
-    colnames(idvs) = c('FID', 'IID')
-  }
-  return(idvs)
-}
-
-read_pcs <- function(pc_file) {
-  pcs = read.table(pc_file, header=T, stringsAsFactors=F)
-  pcs = pcs %>% select(-FID)
-  return(pcs)
-}
-
-read_phenos <- function(pheno_name, pheno_file, idvs) {
-  ## Reads in a file of all phenotypes and covariates
-  # If T, will not use recontact entries of GALA PR
-
-  all_df = read.csv(pheno_file, header=T, stringsAsFactors=F, na.strings=c('NA', 'UNK'))
-  if(is.data.frame(idvs)) {              # subset to individuals
-    all_df = all_df %>% filter(SubjectID %in% idvs$IID)
-  }
-  all_df = all_df %>% filter(is.na(recontact_status))    # original entries only
-  return(all_df)
-}
-
-add_pcs <- function(pc_file, all_df, log_file) {
-  ## Reads PCs and binds to dataframe
-  
-  pcs = read.table(pc_file, header=T, stringsAsFactors=F)
-  pcs = pcs %>% select(-FID)
-  idvs_without_pcs = setdiff(all_df$SubjectID, pcs$IID)
-  if(length(idvs_without_pcs) > 0) {
-    # cat('Warning:', length(idvs_without_pcs), 'individual(s) do(es) not have PCs in pc_file:\n', idvs_without_pcs, '\n\n', file=log_file, append=T)
-    cat('Warning:', length(idvs_without_pcs), 'individual(s) do(es) not have PCs in pc_file.\n', file=log_file, append=T)
-  }
-  
-  all_df = left_join(all_df, pcs, by=c('SubjectID' = 'IID'))
-  return(all_df)  
-}
-
 categorize_pheno <- function(pheno, log_file, do_print=T) {
   # returns number of unique phenotype values  
   # is_binary: determines whether logistic or continuous test is run
@@ -110,90 +63,41 @@ categorize_pheno <- function(pheno, log_file, do_print=T) {
 }
 
 
-get_pheno <- function(all_df, pheno_name, is_binary, pheno_transform, sd_thresh, log_file) {
-  # if phenotype is binary, will not transform and will quit
-  
-  # ensure a unique pheno is pulled out
+make_covar_df <- function(pheno_name, pheno_file, is_binary, pheno_transform, theta_transform, sd_thresh, model_terms, log_file) {
+  # Read in covar file and re-name tested pheno as "pheno" exclude individuals with NAs in tested phenotype, mean model terms, or variance model terms
+  # Input:  pheno_name is a column in file
+  # Output: dataframe with a column named pheno
+
+  # read file of covariates
+  all_df = read.table(pheno_file, header=T, stringsAsFactors=F, na.strings=c('NA'))
+
+  # get phenotype and transform if indicated
   pheno = all_df %>% select_(as.name(pheno_name))
   colnames(pheno) = 'pheno'
   if(ncol(pheno) != 1) {
     stop(cat('Did not pull out one column based on pheno_name. Got ', ncol(pheno), ' columns.'))
   }
-  # transformation functions calculate this and only proceed if non-binary pheno
   num_unique_values = categorize_pheno(pheno, log_file)
-
-  # pheno is a dataframe so must index column
   if(pheno_transform == 'quantnorm') {
     pheno[,1] = qnorm_norm_with_NA(pheno[,1])    
   } else if(pheno_transform == 'truncate') {
     pheno[,1] = remove_outliers(pheno[,1], sd_thresh)
   } 
-  return(pheno)
-}
-
-
-make_covar_df <- function(pheno_name, pheno_file, pc_file, idv_file, is_binary, pheno_transform, theta_transform, sd_thresh, log_file) {
-  # Input:  pheno_name: is either a column in file or 'melanin_baseline' or 'melanin_tan'
-  #         idv_file: if not NA, subsets to individuals in file
-  #         subset_df: if T, return a subset of columns (hard-coded) and rows (only of complete cases)
-  # Output: dataframe with a column named pheno
-  # Special cases:
-  #         GALA PR has recontact entries in addition to main entry for individual.
-
-  # read individuals to subset to
-  idvs = read_idvs(idv_file)
   
-  # read file of covariates
-  all_df = read_phenos(pheno_name, pheno_file, idvs)
-
-  # get phenotype and transform if indicated
-  pheno = get_pheno(all_df, pheno_name, is_binary, pheno_transform, sd_thresh, log_file)
-
-  # add PCs  
-  if(!is.na(pc_file)) {
-    all_df = add_pcs(pc_file, all_df, log_file)
-  }
-  
-  # rename for ease of use in formulas
-  all_df = all_df %>% 
-    rename(IID = SubjectID) %>% 
-    rename(sex = Male) %>% 
-    rename(afr = AFR) %>% 
-    rename(eur = EUR) %>% 
-    rename(ethnicity = child.ethnicity) %>% 
-    mutate(ethnicity=replace(ethnicity, ethnicity=='Other Latino', 'OL')) %>% 
-    mutate(sex=replace(sex, sex=='Female', 'F')) %>% 
-    mutate(sex=replace(sex, sex=='Male', 'M')) %>%
-    mutate(height_squared = height_cm * height_cm) %>%
-    mutate(age_squared = age * age)
-  
-    all_df = all_df %>% 
-      rename(nam = NAM) %>% 
-      mutate(ethnicity=replace(ethnicity, ethnicity=='Puerto Rican', 'PR')) %>% 
-      mutate(ethnicity=replace(ethnicity, ethnicity=='Mexican', 'MX'))
   # transform theta if indicated
   if(theta_transform == 'quantnorm') {
     all_df$afr = qnorm_norm_with_NA(all_df$afr)
     all_df$eur = qnorm_norm_with_NA(all_df$eur)
-      all_df$nam = qnorm_norm_with_NA(all_df$nam)
+    all_df$nam = qnorm_norm_with_NA(all_df$nam)
   } else if(theta_transform == 'truncate') {
     all_df$afr = remove_outliers(all_df$afr, sd_thresh)
     all_df$eur = remove_outliers(all_df$eur, sd_thresh)
-      all_df$nam = remove_outliers(all_df$nam, sd_thresh)
+    all_df$nam = remove_outliers(all_df$nam, sd_thresh)
   }
-
-  # age broken into three categories
-  all_df = all_df %>% mutate(age_cat = cut(all_df$age, breaks=c(min(all_df$age), 11, 16, max(all_df$age)), labels=c('low', 'mid', 'high')))
   
-  # TODO the same variable is in dataframe twice if pheno is untransformed. dangerous. could drop original column  
+  # TODO the same variable is in dataframe twice if pheno
   covar = cbind.data.frame(all_df, pheno)     # add column named pheno
   cat('Covariate dataframe has', nrow(covar), 'individuals.\n', file=log_file, append=T)
-  return(covar)  
-}
-
-
-subset_covar_df <- function(covar, model_terms) {
-  # excludes individuals with NA measurements in any of phenotype, mean model terms, or variance model terms
   covar = covar[,c('pheno', model_terms)]
   num_incomplete = sum(!complete.cases(covar))
   if(num_incomplete > 0) {
@@ -267,8 +171,6 @@ run_models_discrete <- function(pheno_name, model_name, mean_null_model, mean_al
 }
 
 run_models_continuous <- function(pheno_name, model_name, mean_null_model, mean_alt_model, var_null_model, var_alt_model, dof, covar, fit_file, lrt_file, log_file, terse=F) {
-  # TODO figure out how to check for dglm convergence
-  
   if(any(is.na(covar))) {
     cat('Error: covariate matrix has NAs and package dglm will fail. Run function subset_covar_df\n', file=log_file, append=T)
   }
@@ -305,7 +207,6 @@ run_models_continuous <- function(pheno_name, model_name, mean_null_model, mean_
     var_df = cbind.data.frame(tmp_df, 'alt', 'var', rownames(var_fit), var_fit)
     colnames(null_df) = fit_colnames;     colnames(mean_df) = fit_colnames;     colnames(var_df) = fit_colnames
     fit_df = rbind.data.frame(mean_df, var_df)
-    
     
     ll_null = logLik(fit_null)
     ll_alt = - fit_alt$m2loglik / 2
@@ -359,9 +260,7 @@ summarize_lrt_discrete <- function(pheno_name, model_name, fit_null, fit_alt, lr
   # 9.93457039 5.00000000 0.07711054
   # > -2*(summary(fit_alt)$loglik.null - summary(fit_alt)$loglik)
   # [1] 9.93457
-  # tmp_df = cbind.data.frame(pheno_name, model_name)       # avoids warnings from cbind.data.frame
-  # rownames(tmp_df) = c()
-  
+
   null_row = c(pheno_name, model_name, 'null', attr(logLik(fit_null), 'nobs'), NA, logLik(fit_null), NA, attr(logLik(fit_null), 'df'), NA)         # glm
   alt_row = c(pheno_name, model_name, 'alt', fit_alt$nobs, summary(fit_alt)$loglik.null, summary(fit_alt)$loglik, summary(fit_alt)$lrtest)     # hetglm: c('ll_null', 'll_alt', 'LR_test_stat', 'df', 'pvalue')
   out_df = rbind.data.frame(null_row, alt_row)

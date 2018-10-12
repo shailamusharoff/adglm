@@ -34,14 +34,8 @@ pheno_transform = params$pheno_transform
 # Theta transform to apply. Options: 'orig' | 'quantnorm' | 'truncate'
 theta_transform = params$theta_transform      
 
-# Data dictionary csv of covariates including pheno, age, ancestry, etc
+# White-space delimited file of phenotype and covariates including ancestry
 pheno_file = params$pheno_file         
-
-# File with genetic PCs
-pc_file = params$pc_file               
-
-# Individuals to analyze. one line per individual with two columns, no header
-idv_file = params$idv_file             
 
 # Degrees of freedom of test
 dof = as.numeric(params$dof)
@@ -61,7 +55,7 @@ mean_test = params$mean_test
 # Variance terms for LRT
 var_test = params$var_test
 
-# Parameter estimates, standard errors, Wald p-values (do not use)
+# Parameter estimates, standard errors, Wald p-values (do not use for testing)
 fit_file = params$fit_file
 
 # LRT p-values: use these for testing
@@ -70,7 +64,7 @@ lrt_file = params$lrt_file
 # Log file with errors and warnings
 log_file = params$log_file             
 
-# Integer. points more than this many standard deviations from the mean are outliers
+# Float. points more than this many standard deviations from the mean are outliers
 sd_thresh = as.numeric(params$sd_thresh)
 ```
 
