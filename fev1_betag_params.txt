@@ -1,0 +1,21 @@
+# phenotype
+pheno_name: Pre.FEV1.Meas
+is_binary: FALSE
+pheno_file: phenos.txt
+
+# files
+outbase: fev1_PQ_TT_betag
+
+# model
+model_name: m1
+lrt_name: betag
+dof: 1
+mean_covar: [age, sex, nam, eur]
+var_covar: [age, sex, nam, eur]
+mean_test: [genotype]
+var_test: 
+
+# options
+pheno_transform: quantnorm
+theta_transform: truncate
+sd_thresh: 3
