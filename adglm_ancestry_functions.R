@@ -1,6 +1,19 @@
 
 
-## File processing ----------------------------------------------------------------
+## Phenotype, covariate, and file processing ----------------------------------------------------------------
+
+quant_norm <- function(m) {
+  # returns values quantile-normalized to a standard normal distribution
+  
+  probs = ppoints(sort(m))        # sequence of probability points
+  normQuant = qnorm(probs)        # quantiles of a standard normal distribution
+  m_norm = m
+  m_norm[order(m_norm)] = normQuant
+  if(! all.equal(order(m), order(m_norm))) {  # check that orders of original and transformed values match
+    stop('Error: quantile normalization did not work')
+  }
+  return(m_norm)
+}
 
 qnorm_norm_with_NA <- function(x, debug=F) {
   # x: numerical vector that can have NAs
@@ -10,13 +23,9 @@ qnorm_norm_with_NA <- function(x, debug=F) {
   if(num_unique_values < 5) {
     stop('Quitting: refusing to quantile normalize a vector with less than 5 unique values\n')
   } 
-  if(debug) cat('Before qnorm summary and sd: ', summary(x), sd(x, na.rm=T), '\n')
   num_na_before = sum(is.na(x))
-  
   non_na_idx = which(!is.na(x))
   x[non_na_idx] = quant_norm(x[non_na_idx])
-  
-  if(debug) cat('After qnorm summary and sd:  ', summary(x), sd(x, na.rm=T), '\n')
   num_na_after = sum(is.na(x))
   
   if(num_na_before != num_na_after) {
@@ -95,7 +104,6 @@ make_covar_df <- function(pheno_name, pheno_file, is_binary, pheno_transform, th
     all_df$nam = remove_outliers(all_df$nam, sd_thresh)
   }
   
-  # TODO the same variable is in dataframe twice if pheno
   covar = cbind.data.frame(all_df, pheno)     # add column named pheno
   cat('Covariate dataframe has', nrow(covar), 'individuals.\n', file=log_file, append=T)
   covar = covar[,c('pheno', model_terms)]
@@ -208,7 +216,7 @@ run_models_continuous <- function(pheno_name, model_name, mean_null_model, mean_
     colnames(null_df) = fit_colnames;     colnames(mean_df) = fit_colnames;     colnames(var_df) = fit_colnames
     fit_df = rbind.data.frame(mean_df, var_df)
     
-    ll_null = logLik(fit_null)
+    ll_null = - fit_null$m2loglik / 2
     ll_alt = - fit_alt$m2loglik / 2
     test_stat = - 2 * (ll_null - ll_alt)
     lrt_pval = exp(pchisq(test_stat, df=dof, lower.tail=F, log.p=T))

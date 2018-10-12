@@ -13,4 +13,10 @@ Arguments:
     sd_thresh:  2.85 
 
 Binary phenotype: has 2 values
-Covariate dataframe has 1800 individuals.
+Covariate dataframe has 1247 individuals.
+Removed 1 individuals with incomplete phenotype and/or covariate measurements.
+Final dataframe with no NAs has 1246 individuals.
+Success: hetglm converged
+
+Warnings:
+  
